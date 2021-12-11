@@ -1,0 +1,41 @@
+# This file is a template, and might need editing before it works on your project.
+# Select image from https://hub.docker.com/_/php/
+image: php:8.0-fpm
+
+# Select what we should cache between builds
+cache:
+  paths:
+  - vendor/
+
+before_script:
+- apt update -yqq
+- apt install -yqq git curl libpng-dev libonig-dev libxml2-dev zip unzip libmcrypt-dev default-mysql-client libmagickwand-dev --no-install-recommends
+- apt clean
+- rm -rf /var/lib/apt/lists/* 
+# Install PHP extensions
+- docker-php-ext-install pdo_mysql
+# Install & enable Xdebug for code coverage reports
+- pecl install xdebug imagick mcrypt
+- docker-php-ext-enable xdebug imagick mcrypt
+# Install and run Composer
+- curl -sS https://getcomposer.org/installer | php -- --install-dir=/usr/local/bin --filename=composer
+- composer global require "phpunit/phpunit"
+- PATH="/root/.composer/vendor/bin:$PATH"
+
+# Bring in any services we need http://docs.gitlab.com/ee/ci/docker/using_docker_images.html#what-is-a-service
+# See http://docs.gitlab.com/ce/ci/services/README.html for examples.
+services:
+  - mysql:5.7
+
+# Set any variables we need
+variables:
+  # Configure mysql environment variables (https://hub.docker.com/r/_/mysql/)
+  MYSQL_DATABASE: mysql_database
+  MYSQL_ROOT_PASSWORD: mysql_strong_password
+
+# Run our tests
+# If Xdebug was installed you can generate a coverage report and see code coverage metrics.
+test:
+  script:
+  #- vendor/bin/phpunit --configuration phpunit.xml --colors=never
+  - phpunit --bootstrap src/autoload.php --colors=never --log-junit phpunit-report.xml --coverage-text tests
